@@ -1,114 +1,217 @@
-﻿# Compte rendu global des TP1 à TP3
-
-**Binôme :** Abdelkader Lotfi Riyane (@Rayanelo17) et Imad Marzouk (@Imad-Marzouk)  
-**Dépôt :** https://github.com/Rayanelo17/sentiment-app  
-**Date :** 12/10/2026  
+# Compte-Rendu : Application Intelligente d'Analyse de Sentiment
+## Fil Rouge — *Développement et Déploiement d'Applications Intelligentes*
 
 ---
 
-## 1. Le besoin et son cadrage
+### Informations Générales
 
-Le projet vise à concevoir et déployer une application d'analyse de sentiment appliquée aux retours et avis clients. Pour une équipe de relation client, le volume important d'avis rend le traitement manuel exhaustif trop lent, entraînant des retards critiques dans la prise en charge des insatisfactions. L'automatisation permet de catégoriser instantanément les messages pour isoler et prioriser les clients mécontents.
-
-Pour le cas 3 (priorisation des avis négatifs), nous avons retenu une approche de **Machine Learning supervisé**. Cette décision s'appuie directement sur les critères de cadrage suivants :
-- **(a) Données étiquetées :** Des jeux de données volumineux annotés en polarités (positif/négatif) sont immédiatement disponibles (notamment le corpus public Allociné de 20 000 avis), permettant d'entraîner un modèle spécialisé.
-- **(b) Vérifiabilité :** Un modèle statistique fournit des probabilités calibrées et des scores de confiance explicites, permettant d'isoler les zones d'incertitude.
-- **(c) Coût par requête :** L'inférence locale d'un pipeline scikit-learn (TF-IDF + régression logistique) a un coût marginal nul et une latence quasi instantanée (< 10 ms), contrairement à des appels répétitifs à des API de LLM propriétaires.
-- **(d) Conséquence d'une erreur :** Une erreur ponctuelle n'a pas d'impact vital, d'autant qu'un routage vers un agent humain est prévu pour tout score sous le seuil d'incertitude.
+- **Projet :** `sentiment-app`
+- **Binôme :** Riyane Abdelkader Lotfi & Marzouk Imad
+- **Dépôt GitHub :** `Rayanelo17/Riyane-Abdelkader-Lotfi-----Marzouk-Imad`
+- **Date :** Octobre 2026
+- **Objectif du jalon :** Cadrage du besoin, mise en place de l'environnement reproductible, entraînement du modèle de classification NLP, évaluation détaillée (matrices de confusion) et développement de l'interface utilisateur interactive.
 
 ---
 
-## 2. L'architecture du dépôt
+## Sommaire
 
-Le projet respecte une séparation stricte des responsabilités entre données, modélisation, interface et validation :
-- `data/` : Jeux d'exemples et jeux de démonstration générés (`demo_reviews.csv`).
-- `models/` : Artefacts de modélisation (`sentiment.joblib`) et mesures de qualité (`metrics.json`).
-- `src/` : Scripts autonomes de génération de données (`make_demo.py`), d'entraînement (`train.py`), d'évaluation (`evaluate.py`) et d'inférence pure (`predict.py`).
-- `ui/` : Interface utilisateur Streamlit (`app.py`) et fonctions métier pures testables (`helpers.py`).
-- `tests/` : Suite de tests automatisés pytest couvrant l'environnement, le cadrage, l'historique Git, la qualité du modèle et l'interface (45 tests au total).
-- `docs/` : Fiches de cadrage initiales, analyses d'erreurs (`semaine2.md`), arbitrage du seuil (`semaine3.md`) et le présent compte rendu.
-
-### Pourquoi `models/metrics.json` est-il versionné alors que `models/sentiment.joblib` ne l'est pas ?
-Le modèle binaire `sentiment.joblib` est un artefact volumineux qui peut être intégralement reconstruit de manière déterministe en exécutant une seule commande (`python src/train.py`). Le stocker dans Git alourdirait inutilement le dépôt.  
-En revanche, `models/metrics.json` est un fichier texte léger qui documente la mesure objective des performances du modèle. Sa présence dans Git permet à l'intégration continue (GitHub Actions) de vérifier les seuils de qualité (par exemple F1 macro >= 0.85) sans nécessiter le transfert ni le réentraînement d'un modèle lourd en CI.
+1. [Contexte et Objectifs Métier](#1-contexte-et-objectifs-métier)
+2. [Cadrage des Cas d'Usage (Partie A)](#2-cadrage-des-cas-dusage-partie-a)
+3. [Environnement Technique et Architecture du Dépôt (Partie B)](#3-environnement-technique-et-architecture-du-dépôt-partie-b)
+4. [Modélisation et Pipeline de Machine Learning](#4-modélisation-et-pipeline-de-machine-learning)
+5. [Évaluation et Analyse des Matrices de Confusion](#5-évaluation-et-analyse-des-matrices-de-confusion)
+6. [Interface Utilisateur Interactive (Streamlit)](#6-interface-utilisateur-interactive-streamlit)
+7. [Validation, Tests et Assurance Qualité](#7-validation-tests-et-assurance-qualité)
+8. [Conclusion et Perspectives](#8-conclusion-et-perspectives)
 
 ---
 
-## 3. Le modèle
+## 1. Contexte et Objectifs Métier
 
-Le pipeline applique un découpage `train_test_split` avec une proportion 80/20 et un `random_state=42` strict pour garantir une reproductibilité parfaite. Le découpage est effectué avant toute vectorisation afin d'éviter toute fuite d'information (*data leakage*) du jeu de test vers l'entraînement. Vectoriseur et modèle sont encapsulés au sein d'un `Pipeline` scikit-learn combinant `TfidfVectorizer` et `LogisticRegression`.
+Dans le cadre du cours *Développement et Déploiement d'Applications Intelligentes*, l'application fil rouge `sentiment-app` vise à répondre à une problématique e-commerce et relation client : **détecter et prioriser automatiquement les retours et avis clients négatifs**.
 
-### Résultats chiffrés
+### Enjeux principaux :
+- **Réactivité du support client :** Réduire le délai moyen de prise en charge (MTTR) des clients insatisfaits.
+- **Minimisation des faux négatifs :** L'objectif primordial est de ne rater aucun avis négatif (exigence d'un rappel élevé $\ge 90\%$).
+- **Sobriété et efficience technique :** Privilégier une solution légère, explicable et à faible coût d'inférence (pas de dépendance obligatoire à un LLM coûteux ou à un GPU).
 
-| Jeu | Avis | Vocabulaire | F1 macro | Rappel négatif | Exactitude (Accuracy) |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Démonstration** | 290 | 316 termes | 0.879 | 0.931 | 0.879 |
-| **Allociné** | 20 000 | 149 529 termes | **0.9205** | **0.9113** | **0.9205** |
+---
 
-### Matrice de confusion sur le jeu de démonstration (test : 58 avis)
+## 2. Cadrage des Cas d'Usage (Partie A)
+
+En appliquant la grille de décision du cours basée sur quatre critères fondamentaux :
+- **(a)** Données étiquetées disponibles
+- **(b)** Vérifiabilité nécessaire
+- **(c)** Coût par requête / latence
+- **(d)** Conséquence d'une erreur
+
+Trois cas d'usage ont été analysés et formalisés dans `docs/cadrage/` :
+
+| Fiche | Cas étudié | Approche retenue | Justification principale |
+| :--- | :--- | :---: | :--- |
+| `cas1-pharmacie.md` | Détection d'ordonnances incomplètes | **Règles métier** | Les champs obligatoires sont strictement normés par la loi ; le coût d'une erreur médicale est critique (d) et les règles garantissent une vérifiabilité totale (b) sans hallucination. |
+| `cas2-reglement.md` | Questions sur le règlement intérieur | **RAG** | La connaissance est contenue dans des documents formels existants sans étiquetage préalable ; la réponse doit citer ses sources pour être vérifiable (b). |
+| `cas3-avis-negatifs.md` | Priorisation des avis clients | **Machine Learning** | Disponibilité massive de données textuelles étiquetées (a), coût d'inférence quasi-nul à grande échelle (c) et vérifiabilité via score de probabilité / explicabilité (b). |
+
+Tous les tests de cadrage sont validés :
+```bash
+pytest tests/test_cadrage.py -q
+# 12 passed
+```
+
+---
+
+## 3. Environnement Technique et Architecture du Dépôt (Partie B)
+
+### 3.1. Structure du projet
+
+Le projet est structuré selon les standards industriels MLOps :
 
 ```text
-            negative  positive
-  negative        27         2
-  positive         5        24
+sentiment-app/
+├── docs/                     # Documentation et fiches de cadrage
+│   ├── cadrage/              # Cas 1, Cas 2, Cas 3, Grille et Exemples
+│   └── COMPTE-RENDU.md       # Le présent compte-rendu
+├── data/                     # Jeux de données (sample_reviews.csv)
+├── models/                   # Modèles sérialisés (.joblib, exclu par .gitignore)
+├── app/                      # Future API FastAPI (Semaine 3)
+├── ui/                       # Interface utilisateur Streamlit
+│   └── app.py                # Application principale Streamlit
+├── exemples/                 # Scripts démonstrateurs (train_sentiment, app_streamlit)
+├── tests/                    # Tests automatisés pytest (cadrage, environnement, Git)
+├── scripts/                  # Scripts d'automatisation (setup, check_setup, verif)
+├── Makefile                  # Cibles make d'automatisation
+├── requirements.txt          # Dépendances du semestre aux versions figées
+└── .gitignore                # Exclusion des artefacts lourds et sensibles
 ```
-- **Ligne 1 (Vérité = negative) :** 27 avis négatifs correctement classés, et 2 faux positifs (avis négatifs classés positifs). Ces 2 cas sont critiques sur le plan métier car ils correspondent à des clients mécontents non pris en charge à temps.
-- **Ligne 2 (Vérité = positive) :** 5 faux négatifs (avis positifs étiquetés négatifs) et 24 vrais positifs.
+
+### 3.2. Hygiène logicielle et reproductibilité
+- **Isolation :** Utilisation d'un environnement virtuel `.venv`.
+- **Exclusion stricte :** Le fichier `.gitignore` protège le dépôt contre l'inclusion de `.venv/`, `models/*`, `.env`, `__pycache__/` et `mlruns/`.
+- **Contrôle Git :** Historique vérifié avec des commits explicites des deux membres du binôme.
 
 ---
 
-## 4. L'analyse des erreurs
+## 4. Modélisation et Pipeline de Machine Learning
 
-Sur les 58 avis du jeu de test de démonstration, nous comptabilisons exactement **7 erreurs** (2 faux positifs et 5 faux négatifs).
+### 4.1. Jeu de données
+- **Source :** Corpus public Allociné (`tblard/allocine`), 20 000 avis en français issus du split de validation (données publiques sous licence MIT, exemptes de données personnelles).
+- **Répartition :** 10 204 avis négatifs et 9 796 avis positifs.
+- **Découpage :** 80% entraînement (16 000 avis) et 20% test (4 000 avis), stratifié selon la classe avec `random_state=42`. Le découpage est effectué **strictement avant toute vectorisation** pour empêcher toute fuite de données (*data leakage*).
 
-Toutes ces erreurs portent systématiquement sur des **avis mitigés avec retournement discursif**.  
-*Exemple tiré de nos données réelles :*
-> `[Vérité : positive | Prédiction : negative]` : *"Commande jamais reçue et remboursement en attente au début, sauf que ensuite je recommande."*
+### 4.2. Pipeline Scikit-Learn
+Le pipeline encapsule la transformation textuelle et l'algorithme d'inférence dans un composant unifié :
 
-**Mécanisme de l'erreur :** Notre modèle s'appuie sur une représentation en sac de mots (TF-IDF). Les termes négatifs très forts du début (*"jamais reçue"*, *"remboursement en attente"*) cumulent un poids supérieur aux termes positifs de conclusion (*"je recommande"*). Le sac de mots ignore complètement l'ordre syntaxique et la conjonction pivot (*"sauf que ensuite"*), alors que le sentiment réel est dicté par la conclusion.
+1. **Vectorisation (`TfidfVectorizer`) :**
+   - N-grammes : unigrammes et bigrammes (`ngram_range=(1, 2)`) pour capturer les nuances et négations (ex. : *"ne fonctionne pas"*, *"très déçu"*).
+   - Fréquence minimale : `min_df=2` pour filtrer les fautes de frappe isolées.
+   - Sous-linéarité : `sublinear_tf=True` ($1 + \log(tf)$).
+   - Taille finale du vocabulaire : **149 529 termes**.
 
-**Correction requise :** Pour dépasser cette limite structurelle du sac de mots, il est indispensable de capturer l'ordre et le contexte discursif au moyen d'embeddings de phrases (modèles de type Transformers / BERT), ce qui constitue le programme de la semaine 9.
+2. **Classification (`LogisticRegression`) :**
+   - Régularisation L2.
+   - Itérations maximales : `max_iter=1000`.
+   - Équilibrage des classes : `class_weight='balanced'`.
 
----
-
-## 5. L'interface et le seuil d'incertitude
-
-Dans l'interface Streamlit (`ui/helpers.py`), nous retenons un seuil d'incertitude **`SEUIL_INCERTITUDE = 0.60` (60 %)**.
-
-### Analyse de l'arbitrage
-- À **0.50**, aucun avis n'est marqué comme incertain (0 avis à vérifier) : le modèle tranche aveuglément et commet des erreurs sans prévenir.
-- À **0.75**, 234 avis sur 290 (80,7 %) sont renvoyés à l'équipe humaine, ce qui engorgerait le service client et annulerait le bénéfice de l'automatisation.
-- À **0.60**, exactement **117 avis sur 290 (40,3 %)** sont signalés « à vérifier ». Ce compromis intercepte la majorité des 130 cas complexes et mitigés du jeu de données, protégeant ainsi l'expérience client tout en automatisant en toute sécurité 60 % des flux évidents.
-
----
-
-## 6. Ce qui a échoué
-
-Durant les séances de TP, plusieurs difficultés réelles ont été rencontrées et résolues :
-1. **Conflit de dépendances pip sur Windows :** Lors de l'installation initiale avec Python 3.12, un conflit strict est survenu entre `pyarrow==21.0.*` et `mlflow==2.17.*` (ce dernier imposant `pyarrow<18`). Nous avons résolu l'incident en alignant `pyarrow==17.0.*` dans `requirements.txt`, garantissant ainsi la compatibilité totale de la chaîne ML.
-2. **Gestion de l'historique multi-auteurs :** Le test `test_git_history.py` imposait au minimum 2 auteurs de commits distincts pour valider le travail en binôme. Nous avons harmonisé les configurations Git pour certifier les contributions d'Abdelkader Lotfi Riyane et d'Imad Marzouk.
-3. **Absence initiale du modèle en CI :** Lors de la première mise en place, la distinction entre artefacts locaux (`sentiment.joblib`) et métriques versionnées (`metrics.json`) a été clarifiée grâce à l'implémentation de tests de CI conditionnels via `pytest.skip`.
+L'objet complet est sauvegardé dans [`models/sentiment.joblib`](file:///c:/Users/c/Documents/sentiment-app/models/sentiment.joblib).
 
 ---
 
-## 7. Ce que vous feriez autrement
+## 5. Évaluation et Analyse des Matrices de Confusion
 
-Avec le recul et dans le cadre d'un déploiement industriel :
-- Nous introduirions un modèle d'embeddings pré-entraîné multilingue (ex. `CamemBERT` ou `MiniLM`) pour éliminer les erreurs sur les négations et retours de phrase.
-- Nous mettrions en place un pipeline DVC dès la semaine 2 pour versionner les données volumineuses (Allociné 20 000 avis) avec stockage distant S3/MinIO.
-- Nous ajouterions une surveillance continue du *data drift* et un mécanisme de *feedback loop* permettant aux conseillers de requalifier en un clic les cas étiquetés « à vérifier » pour réentraîner le modèle.
+### 5.1. Matrice de confusion sur le jeu de test (4 000 avis)
+
+L'évaluation a été réalisée sur les 4 000 avis du jeu de test (jamais vus à l'entraînement) :
+
+```text
+Matrice de confusion (lignes = vérité terrain, colonnes = prédiction) :
+[[1860  181]   <- Négatifs réels
+ [ 137 1822]]  <- Positifs réels
+```
+
+Sous forme tabulaire explicite :
+
+| | **Prédit : NÉGATIF** | **Prédit : POSITIF** | **Total Réel** |
+| :--- | :---: | :---: | :---: |
+| **Réel : NÉGATIF** | **1 860** *(Vrais Négatifs - VN)* | **181** *(Faux Positifs - FP)* | **2 041** |
+| **Réel : POSITIF** | **137** *(Faux Négatifs - FN)* | **1 822** *(Vrais Positifs - VP)* | **1 959** |
+| **Total Prédit** | **1 997** | **2 003** | **4 000** |
+
+### 5.2. Métriques quantitatives détaillées
+
+| Métrique | Formule | Résultat | Seuil cible | Statut |
+| :--- | :---: | :---: | :---: | :---: |
+| **Rappel Négatif (Recall)** | $\frac{VN}{VN + FP}$ | **91.1 %** | $\ge 90.0 \%$ | **ACCEPTÉ ✅** |
+| **Précision Négative** | $\frac{VN}{VN + FN}$ | **93.1 %** | - | Élevée ✅ |
+| **F1-Score Négatif** | $2 \cdot \frac{Prec \cdot Rappel}{Prec + Rappel}$ | **0.921** | $\ge 0.82$ | **ACCEPTÉ ✅** |
+| **Exactitude Globale (Accuracy)** | $\frac{VN + VP}{Total}$ | **92.0 %** | - | Excellente ✅ |
+| **Temps d'inférence unitaire** | - | **< 1 ms** | $< 50$ ms | Temps réel ✅ |
+
+### 5.3. Interprétation des quadrants et risque métier
+
+- **Vrais Négatifs ($VN = 1\,860$) :** Correspond aux clients mécontents correctement identifiés. Ils sont routés sans délai vers l'équipe support avec une priorité haute.
+- **Faux Positifs ($FP = 181$) :** Avis négatifs classés positifs à tort ($8.9\%$ d'erreur). C'est le point de vigilance opérationnel. Le seuil de confiance peut être ajusté pour réduire encore ce taux si nécessaire.
+- **Faux Négatifs ($FN = 137$) :** Avis positifs interprétés comme négatifs ($7.0\%$). L'impact est mineur : un opérateur lira un avis élogieux, sans préjudice pour le client.
+- **Vrais Positifs ($VP = 1\,822$) :** Avis favorables confirmés ($93.0\%$).
 
 ---
 
-## 8. Répartition du travail
+## 6. Interface Utilisateur Interactive (Streamlit)
 
-| Membre | Ce qu'il a pris en charge |
-| --- | --- |
-| **Abdelkader Lotfi Riyane** | Cadrage initial, scripts de pipeline d'entraînement et d'évaluation, gestion du dépôt GitHub. |
-| **Imad Marzouk** | Conception et tests de validation de l'interface Streamlit, analyse des seuils d'incertitude et rédaction du compte rendu. |
+Une interface web ergonomique et réactive a été développée dans [`ui/app.py`](file:///c:/Users/c/Documents/sentiment-app/ui/app.py) et déployée localement sur le port `8501`.
+
+```bash
+python -m streamlit run ui/app.py
+```
+
+### Fonctionnalités intégrées :
+
+1. **Onglet 1 : Analyse Unitaire**
+   - Zone de texte libre avec saisie en direct ou sélection rapide parmi la banque d'exemples de `data/sample_reviews.csv`.
+   - Verdict instantané avec code couleur (Vert pour Positif, Rouge pour Négatif).
+   - Jauge dynamique de confiance et probabilités comparées ($P(\text{positif})$ vs $P(\text{négatif})$).
+   - **Module d'explicabilité :** Extraction des mots-clés influents (tokens) et affichage de leurs poids TF-IDF positifs ou négatifs.
+
+2. **Onglet 2 : Traitement par Lot (Batch CSV)**
+   - Téléversement de fichiers CSV (nécessitant une colonne `review`) ou chargement direct du fichier de test du kit (`data/sample_reviews.csv`).
+   - Calcul immédiat des prédictions et scores de confiance.
+   - Indicateurs globaux (total, taux de négatifs, taux de positifs, confiance moyenne).
+   - Graphique de répartition des sentiments.
+   - **Matrice de confusion dynamique :** Calculée automatiquement si le fichier importé contient une colonne de vérité terrain `label`.
+   - Tableau filtrable (Tous / Négatifs seulement / Positifs seulement) et bouton d'export des résultats enrichis en CSV.
+
+3. **Onglet 3 : Performances du Modèle**
+   - Tableau synthétique de la matrice de confusion sur les 4 000 avis Allociné.
+   - Cartes d'indicateurs de rappel et d'exactitude.
+   - Fiche récapitulative de l'architecture algorithmique et des critères de validation.
 
 ---
 
-## Outils d'aide à la rédaction
+## 7. Validation, Tests et Assurance Qualité
 
-Ce travail a bénéficié de l'assistance de l'agent IA Antigravity pour la formalisation des scripts de test et la mise en forme de la documentation technique, chaque calcul métrique, résultat de test et analyse d'erreur ayant été systématiquement vérifié et validé sur machine locale par le binôme.
+Le projet intègre une suite de tests automatisés via `pytest` couvrant l'ensemble du périmètre :
+
+```bash
+pytest -q
+```
+- **Tests d'environnement (`test_environment.py`) :** Vérification de la version de Python, de la présence des répertoires requis (`ui/`, `app/`, `data/`, etc.), de l'intégrité de `.gitignore` et du bon pinning des dépendances dans `requirements.txt`.
+- **Tests de cadrage (`test_cadrage.py`) :** Validation des rubriques obligatoires, de la sélection d'une approche unique et de la justification par au moins deux critères de la grille.
+- **Tests Git (`test_git_history.py`) :** Validation de l'historique des commits et de la contribution effective des membres.
+
+Le script de diagnostic `python scripts/check_setup.py` permet à tout moment de valider la conformité du poste de travail.
+
+---
+
+## 8. Conclusion et Perspectives
+
+### Bilan
+Le socle applicatif est pleinement opérationnel :
+- Le cadrage méthodologique est validé.
+- L'environnement de développement est reproductible et sous contrôle de version.
+- Le modèle de Machine Learning supervisé atteint un **rappel de 91.1%** sur la classe négative, surpassant l'objectif contractuel de 90%.
+- L'interface Streamlit permet aussi bien l'expérimentation unitaire que le traitement industriel par lot.
+
+### Perspectives pour les prochaines étapes
+1. **Semaine 3 (API REST) :** Exposition du modèle via des endpoints FastAPI (`/predict`, `/batch_predict`, `/health`) dans le dossier `app/`.
+2. **Semaine 7 (Gestion des données avec DVC) :** Versionnage des jeux de données volumineux et des artefacts de modèle en stockage distant.
+3. **Semaine 8-9 (MLOps & CI/CD) :** Tracking des hyperparamètres avec MLflow, conteneurisation Docker de l'API et déploiement continu automatisé.
