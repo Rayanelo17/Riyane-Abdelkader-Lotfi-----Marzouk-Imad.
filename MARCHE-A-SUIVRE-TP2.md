@@ -122,6 +122,7 @@ L'onglet Actions doit passer au vert. Remarquez que la CI exécute les 42 tests 
 | `data/demo_reviews.csv absent` | étape B sautée | `python src/make_demo.py` |
 | `models/metrics.json absent` | étape C sautée | `python src/train.py` |
 | `F1 macro ... sous le seuil` | jeu trop petit ou modèle mal configuré | relancer avec `--allocine` |
-| `ModuleNotFoundError: joblib` | installation partielle du TP1 | `pip install -r requirements.txt` |
+| `ModuleNotFoundError: joblib` ou `pyarrow` | installation partielle du TP1 | `pip install -r requirements.txt` |
 | `No module named 'train'` | `evaluate.py` lancé depuis `src/` avec un ancien kit | relancer depuis la racine du dépôt |
 | Le modèle apparaît dans `git status` | `.gitignore` mal ajusté | vérifier `models/*` et `!models/metrics.json` |
+| Téléchargement Allociné impossible | proxy ou coupure réseau | garder le jeu de démonstration et le signaler dans `docs/semaine2.md` |

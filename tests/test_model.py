@@ -52,7 +52,8 @@ def test_prediction_evidente(predicteur):
 
 def test_format_de_sortie(predicteur):
     sortie = predicteur("Conforme à la description")
-    assert set(sortie) == {"label", "score"}
+    # inclusion et non égalité : predict() peut renvoyer des champs supplémentaires
+    assert {"label", "score"} <= set(sortie)
     assert sortie["label"] in {"positive", "negative"}
     assert 0.0 <= sortie["score"] <= 1.0
     with pytest.raises(ValueError):
