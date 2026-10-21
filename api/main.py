@@ -72,16 +72,16 @@ async def predict(request: PredictRequest):
     clf = _classifier()
     try:
         result = clf.predict(request.text)
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
     except Exception:
         logger.exception("Erreur lors de la prédiction")
-        raise HTTPException(status_code=500, detail="Erreur interne du serveur")
+        raise HTTPException(status_code=500, detail="Erreur interne du serveur") from None
     logger.info("predict: %r -> %s (%.2f)", request.text[:50], result["label"], result["score"])
     return result
 
 
-if __name__ == "__main__":
+
+if __name__ == "__main__":  # pragma: no cover
     import uvicorn
 
     uvicorn.run("api.main:app", host="0.0.0.0", port=8000, log_level="info")
+

@@ -1,4 +1,4 @@
-﻿"""Fonctions pures de l'interface : chargement du modèle, prédiction, résumé, métriques.
+"""Fonctions pures de l'interface : chargement du modèle, prédiction, résumé, métriques.
 
 Séparées de app.py pour être testables sans lancer Streamlit.
 """
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import classification_report, confusion_matrix, f1_score
+from sklearn.metrics import confusion_matrix, f1_score
 
 RACINE = Path(__file__).resolve().parents[1]
 MODELE = RACINE / "models" / "sentiment.joblib"
@@ -63,9 +63,9 @@ def predire_lot(df: pd.DataFrame, predicteur, colonne: str = "review", seuil: fl
     if not lignes:
         raise ValueError("aucun avis exploitable dans le fichier")
     sortie = df.loc[df[colonne].fillna("").astype(str).str.strip() != ""].copy()
-    sortie["prediction"] = [l["label"] for l in lignes]
-    sortie["confiance"] = [round(l["score"], 3) for l in lignes]
-    sortie["verdict"] = [l["verdict"] for l in lignes]
+    sortie["prediction"] = [ligne["label"] for ligne in lignes]
+    sortie["confiance"] = [round(ligne["score"], 3) for ligne in lignes]
+    sortie["verdict"] = [ligne["verdict"] for ligne in lignes]
     return sortie
 
 
@@ -94,7 +94,8 @@ def expliquer_texte(texte: str, pipeline) -> list[dict]:
     coefs = clf.coef_[0]
     
     contributions = []
-    for col, val in zip(vec.col, vec.data):
+    for col, val in zip(vec.col, vec.data, strict=False):
+
         mot = feature_names[col]
         poids = float(val * coefs[col])
         contributions.append({

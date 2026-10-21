@@ -35,8 +35,8 @@ def test_required_file_exists(root: Path, filename):
 
 
 def test_requirements_pins_versions(root: Path):
-    lines = [l.strip() for l in (root / "requirements.txt").read_text().splitlines()]
-    lines = [l for l in lines if l and not l.startswith("#")]
+    lines = [item.strip() for item in (root / "requirements.txt").read_text().splitlines()]
+    lines = [item for item in lines if item and not item.startswith("#")]
     assert lines, "requirements.txt est vide"
     for line in lines:
         assert "==" in line, f"version non figée : {line}"
