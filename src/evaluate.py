@@ -41,7 +41,7 @@ def main() -> int:
     mc = confusion_matrix(y_test, y_pred, labels=ETIQUETTES)
     print("Matrice de confusion (lignes = vérité, colonnes = prédiction)")
     print(f"{'':>10}{ETIQUETTES[0]:>10}{ETIQUETTES[1]:>10}")
-    for nom, ligne in zip(ETIQUETTES, mc, strict=False):
+    for nom, ligne in zip(ETIQUETTES, mc, strict=True):
         print(f"{nom:>10}{ligne[0]:>10}{ligne[1]:>10}")
 
     faux_negatifs = mc[1][0]
@@ -49,7 +49,7 @@ def main() -> int:
     print(f"\n{faux_positifs} négatifs classés positifs, {faux_negatifs} positifs classés négatifs")
 
     # Trois erreurs à lire, pour comprendre ce que le sac de mots ne voit pas
-    erreurs = [(t, v, p) for t, v, p in zip(X_test, y_test, y_pred, strict=False) if v != p]
+    erreurs = [(t, v, p) for t, v, p in zip(X_test, y_test, y_pred, strict=True) if v != p]
     print(f"\n{len(erreurs)} erreurs au total. Trois exemples :")
     for texte, vrai, predit in erreurs[:3]:
         print(f"  vérité={vrai:9s} prédit={predit:9s} | {texte[:90]}")
