@@ -1,13 +1,7 @@
-import sys
-from pathlib import Path
 from typing import Literal, TypedDict
 
-RACINE = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(RACINE / "src"))
-import predict  # noqa: E402  (fonctions du TP2)
-
-MODELE = predict.MODELE
-charger_modele = predict.charger_modele
+from sentiment_app import predict
+from sentiment_app.predict import predict as _predict
 
 LabelType = Literal["POSITIVE", "NEGATIVE", "INDETERMINE"]
 
@@ -26,7 +20,7 @@ class PredictionResult(TypedDict):
 
 
 class SentimentClassifier:
-    """Enveloppe du modèle TP2 avec l'interface attendue par l'API."""
+    """Enveloppe du modèle avec l'interface attendue par l'API."""
 
     model_name = "tfidf-logreg (TP2, models/sentiment.joblib)"
 
@@ -40,7 +34,7 @@ class SentimentClassifier:
 
     def predict(self, text: str) -> PredictionResult:
         """Renvoie {'label': 'POSITIVE'|'NEGATIVE'|'INDETERMINE', 'score': float, 'text': aperçu}."""
-        r = predict.predict(text)  # lève ValueError si le texte est vide
+        r = _predict(text)  # lève ValueError si le texte est vide
 
         score = float(r["score"])
         if score < SEUIL_ABSTENTION:
@@ -54,6 +48,5 @@ class SentimentClassifier:
 
 
 def load_model() -> SentimentClassifier:
-    """Construit le classifier (le cache de chargement est dans src/predict.py)."""
+    """Construit le classifier (le cache de chargement est dans sentiment_app/predict.py)."""
     return SentimentClassifier()
-
