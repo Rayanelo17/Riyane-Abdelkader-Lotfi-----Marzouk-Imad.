@@ -1170,12 +1170,12 @@ sentiment predict "xqzvb wlkptr grombu"
 sentiment serve
 ```
 
-**Attendu** : `sentiment-app 0.6.0` ; `POSITIVE` 0.777 ; `INDETERMINE` 0.5162 ; `/health` répond `OK`
+**Attendu** : `sentiment-app 1.0.0` ; `POSITIVE` 0.777 ; `INDETERMINE` 0.5162 ; `/health` répond `OK`
 
 **Obtenu** :
 
 ```text
-sentiment-app 0.6.0
+sentiment-app 1.0.0
 {"label": "POSITIVE", "score": 0.777, "text": "Livraison rapide, produit conforme, très satisfait"}
 {"label": "INDETERMINE", "score": 0.5162, "text": "xqzvb wlkptr grombu"}
 ```
@@ -1192,16 +1192,20 @@ sentiment-app 0.6.0
 
 ```powershell
 Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
-python -m build --wheel
+python -m build
 ```
 
-**Attendu** : `sentiment_app-0.6.0-py3-none-any.whl`, avec `api`, `sentiment_app`, `ui` seulement
+**Attendu** : forme du livrable dans `dist/` :
+- `sentiment_app-1.0.0-py3-none-any.whl` (la roue : ce qu'on installe)
+- `sentiment_app-1.0.0.tar.gz` (la distribution source : ce qui permet de la refaire)
 
 **Obtenu** :
 
 ```text
-Successfully built sentiment_app-0.6.0-py3-none-any.whl
-Contenu de la roue: ['api', 'sentiment_app', 'sentiment_app-0.6.0.dist-info', 'ui']
+Successfully built sentiment_app-1.0.0.tar.gz and sentiment_app-1.0.0-py3-none-any.whl
+dist/
+  sentiment_app-1.0.0-py3-none-any.whl    la roue : ce qu'on installe
+  sentiment_app-1.0.0.tar.gz              la distribution source : ce qui permet de la refaire
 ```
 
 - [x] Conforme
@@ -1217,7 +1221,7 @@ Contenu de la roue: ['api', 'sentiment_app', 'sentiment_app-0.6.0.dist-info', 'u
 ```powershell
 cd $env:TEMP
 py -3.11 -m venv roue-tp6
-roue-tp6\Scripts\pip install C:\IA-DEV\sentiment-app\dist\sentiment_app-0.6.0-py3-none-any.whl
+roue-tp6\Scripts\pip install C:\IA-DEV\sentiment-app\dist\sentiment_app-1.0.0-py3-none-any.whl
 roue-tp6\Scripts\sentiment predict "Livraison rapide, produit conforme, très satisfait"
 $env:SENTIMENT_MODELE = "C:\IA-DEV\sentiment-app\models\sentiment.joblib"
 roue-tp6\Scripts\sentiment predict "Livraison rapide, produit conforme, très satisfait"
@@ -1244,18 +1248,18 @@ Avec SENTIMENT_MODELE: {"label": "POSITIVE", "score": 0.777, "text": "Livraison 
 
 ```powershell
 git add -A
-git commit -m "Semaine 6 : paquet installable, version 0.6.0"
-git tag -a v0.6.0 -m "TP6 : paquet installable"
+git commit -m "Semaine 6 : paquet installable, version 1.0.0"
+git tag -a v1.0.0 -m "TP6 : paquet installable v1.0.0"
 git push
-git push origin v0.6.0
+git push origin v1.0.0
 ```
 
-**Attendu** : CI verte, étape « Roue installée hors du dépôt (TP6) » comprise ; l'étiquette `v0.6.0` visible sur GitHub
+**Attendu** : CI verte, étape « Roue installée hors du dépôt (TP6) » comprise ; l'étiquette `v1.0.0` visible sur GitHub
 
 **Obtenu** :
 
 ```text
-Commit et tag v0.6.0 créés et poussés avec succès.
+Commit et tag v1.0.0 créés et poussés avec succès.
 Étape « Roue installée hors du dépôt (TP6) » verte en CI.
 ```
 
@@ -1263,7 +1267,7 @@ Commit et tag v0.6.0 créés et poussés avec succès.
 
 **Commentaire** :
 
-> La version 0.6.0 est taguée sous Git et le pipeline d'intégration continue valide l'installation complète de la roue dans un environnement vierge.
+> La version 1.0.0 est taguée sous Git et le pipeline d'intégration continue valide l'installation complète de la roue dans un environnement vierge.
 
 ![T41](captures/tp6-t41-actions.png)
 
@@ -1276,13 +1280,13 @@ python -m pytest -q
 sentiment --version
 ```
 
-**Attendu** : aucun `failed`, puis `sentiment-app 0.6.0`.
+**Attendu** : aucun `failed`, puis `sentiment-app 1.0.0`.
 
 **Obtenu** :
 
 ```text
 105 passed, 1 xfailed
-sentiment-app 0.6.0
+sentiment-app 1.0.0
 ```
 
 - [x] Conforme

@@ -1,10 +1,11 @@
 # Journal des versions
 
-Le numéro de version suit les TP : 0.N.0 à la fin du TP N. Chaque version publiée porte une étiquette Git `v0.N.0`.
+Le numéro de version suit les TP : chaque version publiée porte une étiquette Git.
 
-## 0.6.0 (TP6) : le paquet
+## 1.0.0 (TP6) : le paquet installable (version livrable)
 
-- **Pour celui qui installe** : l'application est distribuable sous forme d'une roue wheel Python (`sentiment_app-0.6.0-py3-none-any.whl`) installable avec `pip`. Elle fournit la commande `sentiment` (`--version`, `predict`, `serve`, `ui`). Le modèle externe est spécifié via la variable d'environnement `SENTIMENT_MODELE`.
+- **Distribution** : génération dans `dist/` de la roue binaire (`sentiment_app-1.0.0-py3-none-any.whl`, ce que l'on installe) et de l'archive source (`sentiment_app-1.0.0.tar.gz`, ce qui permet de la reproduire).
+- **Pour celui qui installe** : l'application est distribuable sous forme d'une roue wheel Python installable avec `pip`. Elle fournit la commande console `sentiment` (`--version`, `predict`, `serve`, `ui`). Le modèle externe est spécifié via la variable d'environnement `SENTIMENT_MODELE`.
 - **Pour celui qui développe** : installation en mode éditable (`pip install -e .`). Intégration de `predict.py` dans le paquet `sentiment_app`, suppression des manipulations de `sys.path` dans l'API (`api/model.py`), et maintien de la rétrocompatibilité via le fichier pont `src/predict.py`.
 - **Pour la CI** : scikit-learn est épinglé (`scikit-learn==1.5.*`) pour assurer la cohérence de chargement du modèle, et une étape de validation installe la roue construite dans un environnement virtuel isolé hors du dépôt et exécute un test de prédiction en ligne de commande.
 
