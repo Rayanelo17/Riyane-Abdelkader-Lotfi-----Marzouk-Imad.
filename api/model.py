@@ -1,7 +1,7 @@
-from typing import Literal, TypedDict
+import sys
+from typing import Any, Literal, TypedDict
 
-from sentiment_app import predict
-from sentiment_app.predict import predict as _predict
+import sentiment_app.predict
 
 LabelType = Literal["POSITIVE", "NEGATIVE", "INDETERMINE"]
 
@@ -25,7 +25,8 @@ class SentimentClassifier:
     model_name = "tfidf-logreg (TP2, models/sentiment.joblib)"
 
     def __init__(self) -> None:
-        pipeline = predict.charger_modele()  # échoue immédiatement si le joblib manque : on ne démarre pas sans modèle
+        mod: Any = sys.modules.get("sentiment_app.predict") or sentiment_app.predict
+        pipeline = mod.charger_modele()  # échoue immédiatement si le joblib manque : on ne démarre pas sans modèle
         classes = getattr(pipeline, "classes_", None)
         if classes is not None:
             for c in classes:
@@ -34,7 +35,8 @@ class SentimentClassifier:
 
     def predict(self, text: str) -> PredictionResult:
         """Renvoie {'label': 'POSITIVE'|'NEGATIVE'|'INDETERMINE', 'score': float, 'text': aperçu}."""
-        r = _predict(text)  # lève ValueError si le texte est vide
+        mod: Any = sys.modules.get("sentiment_app.predict") or sentiment_app.predict
+        r = mod.predict(text)  # lève ValueError si le texte est vide
 
         score = float(r["score"])
         if score < SEUIL_ABSTENTION:

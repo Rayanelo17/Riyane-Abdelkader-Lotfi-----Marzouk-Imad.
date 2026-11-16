@@ -1,4 +1,29 @@
-# Configuration des outils de qualité (TP4). Le packaging (TP6) complétera ce fichier.
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sentiment-app"
+version = "1.0.0"
+description = "Classifieur de sentiment d'avis clients en français"
+readme = "README-PAQUET.md"
+requires-python = ">=3.11"
+dependencies = [
+    "scikit-learn>=1.5",
+    "joblib>=1.4",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+sentiment = "sentiment_app.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sentiment_app = ["modele/*.joblib"]
 
 [tool.ruff]
 target-version = "py311"
@@ -6,12 +31,11 @@ line-length = 100
 extend-exclude = ["notebooks"]
 
 [tool.ruff.lint]
-# E4, E7, E9, F : erreurs probables ; I : ordre des imports ; B : constructions à risque
 select = ["E4", "E7", "E9", "F", "I", "B"]
 
 [tool.mypy]
 python_version = "3.11"
-mypy_path = "src"            # pour que mypy trouve predict.py, importé par api/model.py
+mypy_path = "src"
 check_untyped_defs = true
 warn_unused_ignores = true
 
@@ -22,34 +46,3 @@ ignore_missing_imports = true
 [tool.coverage.report]
 show_missing = true
 skip_empty = true
-
-# --- Packaging (TP6) : le dépôt devient un paquet installable ---------------------------------
-[build-system]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "sentiment-app"
-dynamic = ["version"]
-description = "Analyse de sentiment d'avis clients : modèle, API et interface"
-readme = "README.md"
-requires-python = ">=3.11"
-dependencies = [
-    "fastapi>=0.115,<0.116",
-    "uvicorn>=0.30,<0.31",
-    "pydantic>=2.9,<3",
-    "scikit-learn>=1.5,<1.6",   # le modèle sauvegardé ne se relit qu'avec cette version
-    "joblib>=1.4,<2",
-]
-
-[project.optional-dependencies]
-ui = ["streamlit>=1.39,<1.40", "pandas>=2.2,<3", "httpx>=0.27,<0.28"]
-
-[project.scripts]
-sentiment = "sentiment_app.cli:main"
-
-[tool.setuptools]
-packages = ["sentiment_app", "api", "ui"]   # ni les tests, ni les données, ni le modèle
-
-[tool.setuptools.dynamic]
-version = { attr = "sentiment_app.__version__" }
